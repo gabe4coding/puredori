@@ -1,4 +1,4 @@
-# pr-shape
+# puredori
 
 A Claude Code plugin that shapes AI work into small PRs a person can review. It sends short rules at session start
 (`hooks/rules.md`), offers two skills (`pr-plan`, `pr-write`), and denies a PR body without `## Intent` and

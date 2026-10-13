@@ -1,12 +1,12 @@
 ---
 name: verify
-description: Project recipe for /verify in pr-shape. Drive the plugin in real headless Claude Code in a new git repo with a fake gh, using drive.mjs, then judge by the rules sent at session start, the skills loaded, the PR gate's denials and the PR bodies that reached gh. Use when you verify a change to hooks/, skills/ or .claude-plugin/plugin.json.
+description: Project recipe for /verify in puredori. Drive the plugin in real headless Claude Code in a new git repo with a fake gh, using drive.mjs, then judge by the rules sent at session start, the skills loaded, the PR gate's denials and the PR bodies that reached gh. Use when you verify a change to hooks/, skills/ or .claude-plugin/plugin.json.
 ---
 
-# Verify pr-shape
+# Verify puredori
 
 The surface is the agent: real Claude Code with this plugin loaded from the repo (`--plugin-dir`, shown as
-`pr-shape@inline` in the debug log). The plugin sends rules at session start, offers two skills, and denies a
+`puredori@inline` in the debug log). The plugin sends rules at session start, offers two skills, and denies a
 `gh pr create` or `gh pr edit --body` without `## Intent` and `## Evidence`. A docs-only or tests-only diff has no
 surface: report SKIP.
 
@@ -46,11 +46,11 @@ that exist, for example a stack: the format is the `gh-state.json` of an earlier
 The `probes/` folder holds prompt files. Each is a JSON array of prompts.
 
 - `gate.json`: a body without sections. Expect one `gateDenials` entry and no `gh` call.
-- `write.json`: open a PR. Expect `skills` to hold `pr-shape:pr-write`, and the `gh` body to have `## Intent` and
+- `write.json`: open a PR. Expect `skills` to hold `puredori:pr-write`, and the `gh` body to have `## Intent` and
   `## Evidence`.
 - `mention.json`: a commit message that names `gh pr create --body`. Expect the commit in `toolResults` and no
   `gateDenials`: only a command that runs counts.
-- `plan.json`: code work that ends in a PR. Expect `pr-shape:pr-plan`, a reply that asks to confirm the intent, and
+- `plan.json`: code work that ends in a PR. Expect `puredori:pr-plan`, a reply that asks to confirm the intent, and
   no file written.
 - For a skill change, drive the path that the change touches. Add a probe file when the path is not covered.
 

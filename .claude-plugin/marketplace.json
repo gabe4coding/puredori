@@ -1,5 +1,5 @@
 {
-  "name": "pr-shape",
+  "name": "puredori",
   "owner": { "name": "gabe4coding" },
-  "plugins": [{ "name": "pr-shape", "source": "./" }]
+  "plugins": [{ "name": "puredori", "source": "./" }]
 }

@@ -23,12 +23,12 @@ export const register: Register = on => {
         return {
           deny:
             `${$.plugin.name}: the PR body has no ${missing.map(s => `"## ${s}"`).join(' or ')} section. ` +
-            'Load skill pr-shape:pr-write, write the body to a file with its template, and run the command again with --body-file.',
+            `Load skill ${$.plugin.name}:pr-write, write the body to a file with its template, and run the command again with --body-file.`,
         }
       }
     }
     return next(e)
   }).catch(($, e, next) =>
-    next.called ? next(e) : { deny: `${$.plugin.name}: the PR gate failed; check the body by hand with skill pr-shape:pr-write.` },
+    next.called ? next(e) : { deny: `${$.plugin.name}: the PR gate failed; check the body by hand with skill ${$.plugin.name}:pr-write.` },
   )
 }

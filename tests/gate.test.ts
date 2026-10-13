@@ -57,7 +57,7 @@ test('the gate blocks a PR body without the required sections', async ($, on) =>
 
   const bad = await $.tool.call({ tool: 'Bash', command: 'gh pr create --title x --body "fixes stuff"' })
   expect(bad.deny).toContain('## Intent')
-  expect(bad.deny).toContain('pr-shape:pr-write')
+  expect(bad.deny).toContain('puredori:pr-write')
 
   // The command text names both sections, but the body has neither.
   const named = await $.tool.call({ tool: 'Bash', command: 'gh pr create --title "## Intent ## Evidence" --body x' })
