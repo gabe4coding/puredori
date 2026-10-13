@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="PuReDoRi">
+  <title>PuReDoRi</title>
+  <!-- a stack of three PRs: the first one is filled, because it holds the story of the stack -->
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="#0A0A0A"/>
+  <rect x="8.5" y="8.5" width="239" height="239" rx="55.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.1"/>
+  <path d="M76 96 V174" stroke="#3F3F46" stroke-width="3"/>
+  <g>
+    <rect x="52" y="56" width="152" height="40" rx="10" fill="#FF5A36"/>
+    <circle cx="76" cy="76" r="7" fill="#0A0A0A"/>
+    <rect x="94" y="72" width="88" height="8" rx="4" fill="#0A0A0A" fill-opacity="0.55"/>
+  </g>
+  <g>
+    <rect x="53.5" y="109.5" width="149" height="37" rx="8.5" fill="#0A0A0A" stroke="#3F3F46" stroke-width="3"/>
+    <circle cx="76" cy="128" r="7" fill="#FF5A36"/>
+    <rect x="94" y="124" width="72" height="8" rx="4" fill="#3F3F46"/>
+  </g>
+  <g>
+    <rect x="53.5" y="159.5" width="149" height="37" rx="8.5" fill="#0A0A0A" stroke="#3F3F46" stroke-width="3"/>
+    <circle cx="76" cy="178" r="7" fill="none" stroke="#52525B" stroke-width="3"/>
+    <rect x="94" y="174" width="56" height="8" rx="4" fill="#3F3F46"/>
+  </g>
+</svg>

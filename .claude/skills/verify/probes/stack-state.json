@@ -1,0 +1,22 @@
+{
+  "prs": [
+    {
+      "number": 1,
+      "title": "Add greet",
+      "body": "## Intent\n\nAdd greetings to the demo.\n\n## Evidence\n\n`greet('Ada')` returns `Hello, Ada`.\n\n## Stack\n\nStep 1/4 of this PR. Previous: none. Next: add a name check (step 2).\n\n## Story\n\nAdd greetings to the demo.\n\n| # | Step | Evidence | PR |\n|---|---|---|---|\n| 1 | Add greet | `greet('Ada')` output | #1 (open) |\n| 2 | Add a name check | `greet('')` output | #2 (open) |\n| 3 | Add farewell | `farewell('Ada')` output | planned |\n| 4 | Add a CLI | `node cli.js greet Ada` output | planned |\n",
+      "base": "main",
+      "head": "step-1",
+      "draft": false,
+      "state": "OPEN"
+    },
+    {
+      "number": 2,
+      "title": "Add a name check",
+      "body": "## Intent\n\nReject an empty name.\n\n## Evidence\n\n`greet('')` throws `name is empty`.\n\nStep 2/4 of #1. Previous: #1. Next: add farewell (step 3).\n",
+      "base": "step-1",
+      "head": "step-2",
+      "draft": false,
+      "state": "MERGED"
+    }
+  ]
+}

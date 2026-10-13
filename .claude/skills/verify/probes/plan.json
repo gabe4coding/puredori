@@ -1,0 +1,3 @@
+[
+  "Implement a CLI in this repo: `node cli.js greet <name>` and `node cli.js farewell <name>` print the greeting, with a --shout flag for upper case. It will end in a PR."
+]

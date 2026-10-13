@@ -1,0 +1,3 @@
+[
+  "From main, create branch fix-comment. Add the line `// Greets a person by name.` at the top of greet.js, commit it, push it, and open a PR against main. Real run output: `cat greet.js` shows the new first line."
+]

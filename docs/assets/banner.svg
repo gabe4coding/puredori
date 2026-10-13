@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 400" width="1280" height="400" role="img" aria-label="PuReDoRi: Pull Request Done Right.">
+  <title>PuReDoRi</title>
+  <rect width="1280" height="400" rx="24" fill="#0A0A0A"/>
+  <rect x="0.5" y="0.5" width="1279" height="399" rx="23.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.1"/>
+
+  <!-- mark: a stack of three PRs, the first one holds the story -->
+  <g transform="translate(64 120) scale(0.625)">
+    <path d="M76 96 V174" stroke="#3F3F46" stroke-width="3"/>
+    <rect x="52" y="56" width="152" height="40" rx="10" fill="#FF5A36"/>
+    <circle cx="76" cy="76" r="7" fill="#0A0A0A"/>
+    <rect x="94" y="72" width="88" height="8" rx="4" fill="#0A0A0A" fill-opacity="0.55"/>
+    <rect x="53.5" y="109.5" width="149" height="37" rx="8.5" fill="#0A0A0A" stroke="#3F3F46" stroke-width="3"/>
+    <circle cx="76" cy="128" r="7" fill="#FF5A36"/>
+    <rect x="94" y="124" width="72" height="8" rx="4" fill="#3F3F46"/>
+    <rect x="53.5" y="159.5" width="149" height="37" rx="8.5" fill="#0A0A0A" stroke="#3F3F46" stroke-width="3"/>
+    <circle cx="76" cy="178" r="7" fill="none" stroke="#52525B" stroke-width="3"/>
+    <rect x="94" y="174" width="56" height="8" rx="4" fill="#3F3F46"/>
+  </g>
+
+  <!-- wordmark: the capitals spell the name -->
+  <g font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace">
+    <text x="244" y="204" font-size="72" font-weight="700" fill="#FAFAFA" letter-spacing="-1"><tspan fill="#FF5A36">P</tspan>u<tspan fill="#FF5A36">R</tspan>e<tspan fill="#FF5A36">D</tspan>o<tspan fill="#FF5A36">R</tspan>i</text>
+    <text x="248" y="252" font-size="17" fill="#A1A1AA">Pull Request Done Right.</text>
+    <text x="248" y="292" font-size="14" fill="#52525B" letter-spacing="1.5">A CLAUDE CODE PLUGIN</text>
+  </g>
+
+  <!-- panel: the story table of the first PR, kept current by the plugin -->
+  <g transform="translate(790 88)" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="14">
+    <rect width="426" height="272" rx="14" fill="#141414" stroke="#FFFFFF" stroke-opacity="0.08"/>
+    <text x="22" y="40" fill="#FAFAFA"><tspan fill="#FF5A36">›</tspan> open the PR for step 3</text>
+    <text x="22" y="76" fill="#52525B">## Story of #1</text>
+    <g>
+      <text x="38" y="104" fill="#71717A">1</text><text x="62" y="104" fill="#FAFAFA">Add greet</text>
+      <text x="38" y="130" fill="#71717A">2</text><text x="62" y="130" fill="#FAFAFA">Add a name check</text>
+      <text x="38" y="156" fill="#71717A">3</text><text x="62" y="156" fill="#FAFAFA">Add farewell</text>
+      <text x="38" y="182" fill="#71717A">4</text><text x="62" y="182" fill="#71717A">Add a CLI</text>
+    </g>
+    <g text-anchor="end">
+      <text x="400" y="104" fill="#FF5A36">#1 open</text>
+      <text x="400" y="130" fill="#A1A1AA">#2 merged</text>
+      <text x="400" y="156" fill="#FF5A36">#3 open</text>
+      <text x="400" y="182" fill="#52525B">planned</text>
+    </g>
+    <line x1="22" y1="202" x2="404" y2="202" stroke="#FFFFFF" stroke-opacity="0.08"/>
+    <text x="22" y="236" fill="#FF5A36" font-weight="700">puredori <tspan fill="#FAFAFA" font-weight="400">#3 opened, story of #1 updated</tspan></text>
+    <text x="400" y="258" fill="#52525B" text-anchor="end" font-size="12">no ## Intent or ## Evidence: the PR is stopped</text>
+  </g>
+</svg>

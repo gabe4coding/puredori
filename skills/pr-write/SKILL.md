@@ -5,79 +5,54 @@ description: Use when writing or updating a PR body — before `gh pr create` or
 
 # pr-write
 
-Why: a noisy description is the first reason the user stops reading an AI PR. Each section below has a reader; anything else is noise. The person who wrote the prompt owns the result, so the body must give them enough to own it.
+Why: a noisy description is the first reason the user stops reading an AI PR. The person who wrote the prompt owns the result, so the body must give them enough to own it, and nothing more.
 
-## Gather first
+## Gather
 
-- Base and diff: `git diff --stat <base>...HEAD` and `git diff --name-status <base>...HEAD`.
-- The story: from pr-plan in this session, or from the first PR of the stack (`gh pr view <n> --json body`). If there is none, ask the user for the intent in one sentence.
-- Real run output from the work. If there is none, produce it now: run the app, curl the endpoint, take the screenshot, measure before and after. If you cannot, say so in Evidence. Never put "tests pass" in its place.
+- `git diff --stat <base>...HEAD` and `git diff --name-status <base>...HEAD`.
+- The intent: from pr-plan in this session, or from the Story in the first PR of the stack (`gh pr view <n> --json body`). If there is none, ask the user for it in one sentence.
+- Real run output from the work. If there is none, produce it now: run the app, curl the endpoint, take the screenshot, measure. Test output does not count: you wrote the tests. If you cannot, say so in Evidence.
 
 ## Size
 
-- Small (one concern, about 100 changed lines or less, no hits in the reading map): only `## Intent` (one line) and `## Evidence`.
-- Otherwise: every section of the template.
-- First PR of a stack: keep the `## Story` section that pr-plan put in the draft PR, at the end, with each step's PR link and status. Read it from the PR, not from memory. When step 1 is ready, mark the PR ready with `gh pr ready <n>`.
-
-`## Intent` and `## Evidence` are always required: a hook blocks `gh pr create` without them.
-
-## Template
-
-```markdown
-## Intent
-
-<what was asked, 1–2 sentences the prompter can confirm>
-
-<optional, big PRs only: one small visual — call tree diff, file tree diff, pseudocode or Mermaid; the smallest view that makes the point>
-
-## Drift
-
-<where the result differs from the intent: scope added, removed or changed. "None." if none>
-
-## Decisions
-
-- <only choices that change what to do next or make the next step less predictable>
-- Door: <one-way | two-way> — <one line: can this be rolled back cheaply?>
-
-## Evidence
-
-**Before:** <real run output: screenshot, curl, log, numbers>
-**After:** <the same, after the change>
-
-## Reading map
-
-<mechanical signals, rules below>
-
-## Stack
-
-Step <k>/<n> of <link to first PR>. Previous: <link or "none">. Next: <planned step or "none">.
-```
-
-## Reading map rules
-
-Build it from the diff, not from your own idea of risk. The user samples the code here; if you choose where they look, the sample is worthless.
-Under each signal with hits, list paths (with line ranges when useful). Leave out signals with no hits.
+Check the diff for these signals. They decide the size, and a full body lists the hits in its reading map.
 
 - **Tests changed or deleted:** test files with status D or M; removed or weakened assertions.
 - **Config:** env, yaml, json, build files, CI, feature flags, infra.
 - **Migrations / schema:** database migrations, schema files.
-- **Public API:** routes, controllers, OpenAPI / proto / GraphQL schemas, exported types, events and messages.
+- **Public API:** routes, controllers, OpenAPI / proto / GraphQL schemas, exported functions and types, events and messages.
 - **Error handling:** diff lines that add or remove catch, throw, except, error returns, retries, timeouts.
 
-Do not add a "risky areas" list of your own.
+Small: one concern, about 100 changed lines or less, and no signal hits. Write only these, plus the Stack part below:
+
+```markdown
+## Intent
+
+<what was asked, one line the prompter can confirm>
+
+## Evidence
+
+<real run output: before and after>
+```
+
+Otherwise, read `references/full-body.md` in this skill's base directory and use its template.
+
+## Stack
+
+In a stack, end the body with `Step <k>/<n> of <first PR>. Previous: <PR or "none">. Next: <step or "none">.`
+
+The first PR keeps its `## Story` section last, after the Step line. Read it from the PR, not from memory. When step 1 is ready, `gh pr ready <n>`.
+
+### Keep the Story current
+
+Why: reviewers move through the stack from the Story table. A stale row hides an open PR or sends them to a closed one.
+
+After you open or update a PR of a later step, read the first PR (`gh pr view <first PR> --json state,body`). If it is not `OPEN`, leave it: nobody reviews from a closed PR. In the PR column, set this step's row to `#<n> (open)`, and check each other row's PR with `gh pr view <n> --json state`: `(open)`, `(merged)` or `(closed)`. Write the fetched body with only those rows changed to a file, then `gh pr edit <first PR> --body-file <path>`. Do not rebuild the body from memory: you would drop edits made by others.
 
 ## Style
 
 - No preamble, no "This PR…", no generic bullets, no list of changed files.
 - Use the repo's domain words (`GLOSSARY.md` if present).
-- Before you open the PR, delete every sentence the reviewer would skip.
+- Delete every sentence the reviewer would skip.
 
-## Open the PR
-
-Write the body to a file in the scratchpad, then:
-
-```bash
-gh pr create --base <base> --title "<title>" --body-file <path>
-```
-
-Update an existing PR with `gh pr edit <n> --body-file <path>`. When a stack step opens, also update the Story table in the first PR.
+Write the body to a file in the scratchpad and pass `--body-file`.
