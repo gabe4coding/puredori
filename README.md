@@ -10,7 +10,7 @@ A reviewer of an AI PR needs the intent, the drift from the intent, the decision
 |---|---|---|
 | `pr-plan` | Skill | Confirms the intent with you. Splits the work into a stack of small PRs, each with planned run evidence. Opens the first PR as a draft that holds the story. |
 | `pr-write` | Skill | Writes the PR body: Intent, Drift, Decisions, Evidence, Reading map, Stack. A small diff gets Intent and Evidence only. |
-| Rules | Hook (`prompt.compose`) | Adds short PR-shape rules to the system prompt of every request. |
+| Rules | Hook (`SessionStart` command) | Adds short PR-shape rules (`hooks/rules.md`) to the context at the start of a session, and after `/clear` and compaction. |
 | PR gate | Hook (`tool.call` on Bash) | Stops `gh pr create` and `gh pr edit --body` when the body has no `## Intent` or no `## Evidence` section. |
 
 ## Install

@@ -1,1 +1,10 @@
-{ "modules": ["./register.ts"] }
+{
+  "modules": ["./register.ts"],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [{ "type": "command", "command": "cat \"${CLAUDE_PLUGIN_ROOT}/hooks/rules.md\"", "timeout": 5 }]
+      }
+    ]
+  }
+}
