@@ -1,0 +1,6 @@
+{
+  "name": "pr-shape",
+  "version": "0.1.0",
+  "author": { "name": "gabe4coding" },
+  "description": "Shape AI work into small, reviewable PRs: plan the stack, write two-layer PR bodies, block PRs without intent and evidence."
+}
