@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/gabe4coding/puredori?color=blue"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue"></a>
   <a href="docs/installation.mdx"><img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-D97757?logo=claude&logoColor=white"></a>
   <a href="https://github.com/gabe4coding/puredori/actions/workflows/test.yml"><img alt="Tests" src="https://github.com/gabe4coding/puredori/actions/workflows/test.yml/badge.svg"></a>
 </p>
