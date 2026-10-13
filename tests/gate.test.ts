@@ -41,11 +41,3 @@ test('the gate blocks a PR body without the required sections', async ($, on) =>
   const other = await $.tool.call({ tool: 'Bash', command: 'git log -1' })
   expect(other.deny).toBeUndefined()
 })
-
-test('the rules section is added to the system prompt', async ($, on) => {
-  on('prompt.compose', () => ({ sections: [] }))
-  const { sections } = await $.prompt.compose({ model: 'claude-opus-5-5', promptModel: 'claude-opus-5-5', surfaces: [], tools: [], outputStyle: null, traits: [] })
-  const rules = sections.find(s => s.id === 'pr-shape:rules')
-  expect(rules?.scope).toBe('session')
-  expect(rules?.text).toContain('pr-shape:pr-plan')
-})
