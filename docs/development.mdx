@@ -1,0 +1,98 @@
+---
+title: Development
+description: Repo layout, verification loop, checks and release rules for contributors.
+---
+
+# Development
+
+The full repo is the plugin. Claude Code loads the hooks from `hooks/hooks.json` and the skills from `skills/`.
+
+## Layout
+
+| Path | What it contains |
+| --- | --- |
+| `.claude-plugin/` | The plugin manifest (`plugin.json`) and the marketplace manifest. |
+| `hooks/hooks.json` | The SessionStart hook that sends `hooks/rules.md`, and the hooks module. |
+| `hooks/rules.md` | The rules that Claude reads at session start. |
+| `hooks/gate.ts` | Pure helpers of the PR gate: a shell lexer, the body of each PR command, the missing sections. |
+| `hooks/register.ts` | The PR gate hook. It reads body files and stops a body without the sections. |
+| `skills/` | The `pr-plan` and `pr-write` skills, and the full PR template in `skills/pr-write/references/`. |
+| `tests/` | The gate tests, and the checks for docs and versions. |
+| `.claude/skills/verify/` | The recipe that `/verify` reads, the driver, a fake `gh`, and the probes. |
+| `docs/` | The user docs, and the banner and logo in `docs/assets/`. |
+
+## Verification loop
+
+Do these tasks before each commit, in this order. If a task changes code, start again at task 1. The full rules
+are in `CODING_STANDARDS.md`.
+
+1. Run `/simplify`. This built-in skill cleans up the diff and applies the fixes.
+2. Run `/code-review`. This built-in skill looks for bugs in the diff. Fix each bug that it finds. If you do not
+   fix a finding, write the reason in the commit message.
+3. Run the checks in [Checks](#checks).
+4. Run `/verify` after a change to `hooks/`, `skills/` or `.claude-plugin/plugin.json`. This built-in skill drives
+   the change in real Claude Code. It reads the recipe in `.claude/skills/verify/SKILL.md`. Skip this task when the
+   diff changes only tests or docs.
+
+## Drive the plugin
+
+`.claude/skills/verify/drive.mjs` runs one headless Claude Code session with the plugin from your clone. The
+session runs in a new git repo with a fake `gh`, so it never reaches GitHub. The script prints the evidence as JSON:
+the skills that Claude loaded, its tool calls, the denials of the gate, and the PRs at the end.
+
+```bash
+node .claude/skills/verify/drive.mjs run --prompts .claude/skills/verify/probes/gate.json
+```
+
+- The `probes/` folder holds prompt files. `.claude/skills/verify/SKILL.md` tells what each probe expects.
+- `--state` starts the fake `gh` with PRs that exist, for example a stack. The stack probes use it.
+- A run uses your Claude Code login and costs API usage, about $0.01 with Haiku. Use `--model` to change the model.
+  The `write.json` probe needs `--model sonnet` (about $0.20), because Haiku calls each small diff small.
+- Claude is a model. If an expected action did not happen, run the probe again before you call it a failure.
+- Delete the run folder after you read the evidence: `node .claude/skills/verify/drive.mjs clean <folder>`.
+
+## Checks
+
+Run these checks before each commit:
+
+```bash
+claude plugin validate .
+```
+
+```bash
+claude plugin test .
+```
+
+```bash
+node tests/docs.check.mjs
+```
+
+```bash
+node tests/version.check.mjs
+```
+
+- `claude plugin validate .` reads the manifests and the hooks module as Claude Code does.
+- `claude plugin test .` tests the PR gate with a fake host.
+- `tests/docs.check.mjs` checks the rules for the docs.
+- `tests/version.check.mjs` fails if the plugin changed and its version did not increase.
+
+CI (`.github/workflows/test.yml`) runs the checks for each push to `main` and each pull request:
+
+- It runs `claude plugin test .` with a fixed Claude Code version. To use a newer version, run the tests with it on
+  your machine first. Then change the version in the workflow.
+- Each Monday, it also runs the tests with the newest Claude Code release. If this job fails, a new release changed
+  something that the plugin uses. Fix the plugin, then increase the fixed version.
+- It runs the version check on pull requests only.
+
+CI does not run `/verify` or the probes, because CI has no login.
+
+## Release
+
+1. Increase `version` in `.claude-plugin/plugin.json`. Claude Code caches a plugin by its version, so without a new
+   version, users do not get the change.
+2. Run the checks and the probes that the change touches.
+
+## More
+
+[`CODING_STANDARDS.md`](../CODING_STANDARDS.md) has the full standards for code, tests, the text that the model
+reads, and docs.

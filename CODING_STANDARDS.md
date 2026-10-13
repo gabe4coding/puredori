@@ -26,6 +26,7 @@ the others rely on discipline.
 - The checks. `[test: CI runs them]`
   - `claude plugin validate .`: the manifests and the module, as the engine reads them.
   - `claude plugin test .`: the hooks against a fake host (`tests/*.test.ts`).
+  - `node tests/docs.check.mjs`: the rules in [Docs](#docs).
   - `node tests/version.check.mjs`: the version rule below. CI runs it on each pull request.
 - Write a test for each behaviour change of the hooks.
 - CI (`.github/workflows/test.yml`) pins the Claude Code version for `claude plugin test .`, and a weekly job runs
@@ -47,3 +48,49 @@ files), and the denial messages in `hooks/register.ts`.
   skill body loads only when the skill runs. Put detail that only some runs need in a reference file that the skill
   names, so the model reads it only then.
 - A denial message names the fix: the skill to load and the command to run again.
+
+## Docs
+User docs are `README.md` and `docs/*.mdx`. They are for humans first: a developer who installs the plugin or
+changes it. Out of this set: `AGENTS.md`, this file and the model-facing text above.
+`tests/docs.check.mjs` checks the rules marked `[test]`.
+
+### Content
+- `README.md` stays a short landing page: pitch, quick start, one example, links. User docs live in `docs/*.mdx`.
+  When behaviour changes, change the matching page (`docs/usage.mdx` for the skills, rules and gate).
+- The code and the skills are the source of truth. Check every behaviour in `hooks/` and `skills/` before you
+  write it.
+- Lead with what the reader wants to do and a short example. Reference tables come after.
+- Keep only facts that change what a user does or understands. Leave out function names unless the user types
+  them, and history.
+- The banner (`docs/assets/banner.svg`, 1280x400) and the logo use one accent color, `#FF5A36`, on `#0A0A0A`.
+
+### Format
+- Each `docs/*.mdx` starts with front matter (`title`, one-sentence `description`) and an H1 equal to the title.
+  `[test]`
+- Plain Markdown, no JSX, imports or comments, so GitHub renders them. Keep `<…>` and `{…}` inside backticks or
+  code blocks: MDX reads them as JSX. `[test]`
+- Relative links use the `.mdx` name and the GitHub heading slug. When you rename a heading, fix every link to it.
+  `[test: every link and anchor must resolve]`
+
+### Language: ASD-STE100 (Simplified Technical English)
+Technical names are allowed: tool names, options, file and product names.
+- Instructions: imperative, one instruction per sentence, at most 20 words, condition first ("If X, do Y").
+- Descriptions: at most 25 words per sentence `[test]`, one topic per sentence, at most 6 sentences per paragraph.
+- Active voice, simple present. "can" for possibility, "must" for a requirement, "do not" for a prohibition.
+- No should/may/might/would/could, contractions, semicolons, e.g./i.e./etc., or filler words (just, simply,
+  easily) `[test]`. No -ing forms where a plain verb works. Keep the articles.
+- Vertical lists for three or more items, numbered lists when order matters. A warning starts with the
+  instruction, then gives the reason.
+- One word for one meaning, in all docs:
+
+| Term | Meaning | Do not use |
+| --- | --- | --- |
+| plugin | PuReDoRi as Claude Code installs it. `puredori` in commands. | mod, extension |
+| rules | The text in `hooks/rules.md` that Claude reads at session start | prompt, instructions |
+| PR gate | The hook that stops a PR body without `## Intent` or `## Evidence` | guard, check, validator |
+| stack | The PRs of one task, each on the branch of the step before it | chain, series |
+| step | One PR of a stack, with one intent | phase, part |
+| first PR | The PR of step 1. It holds the Story table. | root PR, parent PR |
+| Story table | The plan of the stack, as a table at the end of the first PR | plan table, index |
+| signal | A kind of change in the diff that the reading map lists: tests, config, migrations, public API, error handling | risk, hotspot |
+| run output | Real output of the changed program: a log, a curl reply, a screenshot, numbers | test result, proof |

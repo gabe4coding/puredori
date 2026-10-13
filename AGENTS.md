@@ -9,6 +9,8 @@ A Claude Code plugin that shapes AI work into small PRs a person can review. It 
 - The PR gate: what a command writes and where its body is (pure, no `$`) → `hooks/gate.ts`. The hook that uses it
   → `hooks/register.ts`. The session-start rules → `hooks/rules.md`, sent by the command hook in `hooks/hooks.json`.
 - The skills → `skills/*/SKILL.md`.
+- User docs → `README.md` and `docs/*.mdx`, written to the "Docs" rules in `CODING_STANDARDS.md`. A behaviour change
+  of the skills, rules or gate also changes `docs/usage.mdx`.
 - What real Claude Code does with the plugin → `.claude/skills/verify/` (`drive.mjs` drives any prompts in a new git
   repo with a fake `gh` and prints the evidence). Run it before you trust an assumption about the engine.
 - The engine API (`$`, events, `claude-code/testing`) → `.claude-plugin/types/claude-code/index.d.ts`. Claude Code

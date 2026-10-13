@@ -1,0 +1,82 @@
+---
+title: Installation
+description: Install PuReDoRi in Claude Code, check that it works, and keep it up to date.
+---
+
+# Installation
+
+## Requirements
+
+- Claude Code 2.1.296 or later. The PR gate uses the hooks module API of Claude Code, which can change between
+  releases.
+- The GitHub CLI (`gh`), logged in to your account. The skills use it to open PRs and to read the first PR of a
+  stack.
+- A git repository with a remote on GitHub.
+
+## Install from the marketplace
+
+Type these commands at the prompt of a Claude Code session:
+
+```
+/plugin marketplace add gabe4coding/puredori
+/plugin install puredori@puredori
+```
+
+Then start a new session. The plugin sends its rules at the start of a session.
+
+You can also install from a shell:
+
+```bash
+claude plugin marketplace add gabe4coding/puredori
+```
+
+```bash
+claude plugin install puredori@puredori
+```
+
+## Check that it works
+
+1. Start a new session.
+2. Type `/puredori:` at the prompt.
+
+The command list shows `/puredori:pr-plan` and `/puredori:pr-write`. If they are not in the list, the plugin did
+not load. Run `claude plugin details puredori` in a shell to see the parts of the plugin.
+
+## Run from a local folder
+
+To try a change, load the plugin from a clone:
+
+```bash
+claude --plugin-dir /path/to/puredori
+```
+
+To use a clone in every session, add the clone as a marketplace and install from it:
+
+```bash
+claude plugin marketplace add /path/to/puredori
+```
+
+```bash
+claude plugin install puredori@puredori
+```
+
+Claude Code installs a copy of the clone and keeps it by version. To get a change into this copy, increase
+`version` in `.claude-plugin/plugin.json`. Then do the steps in [Update](#update).
+
+## Update
+
+```bash
+claude plugin marketplace update puredori
+```
+
+```bash
+claude plugin update puredori@puredori
+```
+
+Then start a new session.
+
+## Uninstall
+
+```bash
+claude plugin uninstall puredori@puredori
+```

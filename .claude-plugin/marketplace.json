@@ -1,5 +1,12 @@
 {
   "name": "puredori",
   "owner": { "name": "gabe4coding" },
-  "plugins": [{ "name": "puredori", "source": "./" }]
+  "description": "Pull Request Done Right: AI work shaped into small PRs that a person can review.",
+  "plugins": [
+    {
+      "name": "puredori",
+      "source": "./",
+      "description": "Plans a stack of small PRs before the code, writes PR bodies with intent, drift, evidence and a reading map, and stops a PR body without intent and evidence."
+    }
+  ]
 }
