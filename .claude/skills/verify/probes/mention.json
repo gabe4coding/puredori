@@ -1,0 +1,3 @@
+[
+  "Create notes.md with the single line `todo`. Then commit it with one Bash call: git add notes.md && git commit -m \"Note that gh pr create --body needs an Intent section\""
+]

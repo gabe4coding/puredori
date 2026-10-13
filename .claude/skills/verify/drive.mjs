@@ -25,8 +25,7 @@ const USAGE = `usage:
   node drive.mjs run --prompts <file.json> [options]
   node drive.mjs clean <dir>
 
-  --prompts reads a JSON array of prompts. Use it for a prompt that names
-  "gh pr create": the PR gate of your own session reads the command line.`
+  --prompts reads a JSON array of prompts (see SKILL.md).`
 // What the session may do without a person: the file tools, skills, git and
 // gh (the fake one). Any other tool or command is denied, and the denial is
 // part of the evidence. No interpreter: it could reach the real gh.

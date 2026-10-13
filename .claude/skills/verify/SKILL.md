@@ -23,8 +23,8 @@ node .claude/skills/verify/drive.mjs run 'Implement X. It will end in a PR.' 'Ye
 node .claude/skills/verify/drive.mjs clean <dir>          # after you read the evidence
 ```
 
-Put a prompt that names `gh pr create` in a JSON file and pass `--prompts`: the PR gate of your own session reads
-the command line and denies it. Runs are independent: start several as background jobs. One run with Haiku costs
+Put a prompt that names `gh pr create` in a JSON file and pass `--prompts`: a gate older than 0.1.2 in your own
+session denies a command line that only names it. Runs are independent: start several as background jobs. One run with Haiku costs
 about $0.01. `node .claude/skills/verify/drive.mjs` prints the options. `--state <gh-state.json>` starts with PRs
 that exist, for example a stack: the format is the `gh-state.json` of an earlier run.
 
@@ -48,6 +48,8 @@ The `probes/` folder holds prompt files. Each is a JSON array of prompts.
 - `gate.json`: a body without sections. Expect one `gateDenials` entry and no `gh` call.
 - `write.json`: open a PR. Expect `skills` to hold `pr-shape:pr-write`, and the `gh` body to have `## Intent` and
   `## Evidence`.
+- `mention.json`: a commit message that names `gh pr create --body`. Expect the commit in `toolResults` and no
+  `gateDenials`: only a command that runs counts.
 - `plan.json`: code work that ends in a PR. Expect `pr-shape:pr-plan`, a reply that asks to confirm the intent, and
   no file written.
 - For a skill change, drive the path that the change touches. Add a probe file when the path is not covered.
