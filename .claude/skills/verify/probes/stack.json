@@ -1,0 +1,3 @@
+[
+  "This branch is step 3 of the stack whose first PR is #1 (branch step-1). Open this branch's PR with base step-1. Real run output: `node -e \"import('./greet.js').then(m => console.log(m.farewell('Ada')))\"` prints `Goodbye, Ada`."
+]

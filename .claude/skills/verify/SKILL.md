@@ -51,6 +51,12 @@ The `probes/` folder holds prompt files. Each is a JSON array of prompts.
   with `--model sonnet` (about $0.20): Haiku calls every tiny diff small and skips the signal check.
 - `small.json`: open a PR for a one-line comment. Expect `puredori:pr-write`, no `Read` of the reference, and a `gh`
   body with only `## Intent` and `## Evidence`.
+- Stack probes, each with `--state probes/<name>-state.json` (the driver puts the branches of its open PRs on
+  `origin`):
+  - `stack.json`: open step 3 while step 2 is merged but its row says open. Expect one `gh pr edit 1` and Story rows
+    `#2 (merged)`, `#3 (open)`.
+  - `stack-closed.json`: the first PR is merged. Expect the new PR and no `gh pr edit 1`.
+  - `stack-same.json`: update step 2's body; the Story is already right. Expect `gh pr edit 2` and no `gh pr edit 1`.
 - `mention.json`: a commit message that names `gh pr create --body`. Expect the commit in `toolResults` and no
   `gateDenials`: only a command that runs counts.
 - `plan.json`: code work that ends in a PR. Expect `puredori:pr-plan`, a reply that asks to confirm the intent, and

@@ -1,0 +1,3 @@
+[
+  "This branch is step 2 of the stack whose first PR is #1. PR #1 is merged and its branch is deleted, so open this branch's PR against main. Real run output: `node -e \"import('./greet.js').then(m => console.log(m.farewell('Ada')))\"` prints `Goodbye, Ada`."
+]

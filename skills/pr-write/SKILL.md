@@ -41,7 +41,13 @@ Otherwise, read `references/full-body.md` in this skill's base directory and use
 
 In a stack, end the body with `Step <k>/<n> of <first PR>. Previous: <PR or "none">. Next: <step or "none">.`
 
-The first PR keeps its `## Story` section last, after the Step line. Read it from the PR, not from memory. When step 1 is ready, `gh pr ready <n>`. When a later step opens, update the Story row of that step in the first PR.
+The first PR keeps its `## Story` section last, after the Step line. Read it from the PR, not from memory. When step 1 is ready, `gh pr ready <n>`.
+
+### Keep the Story current
+
+Why: reviewers move through the stack from the Story table. A stale row hides an open PR or sends them to a closed one.
+
+After you open or update a PR of a later step, read the first PR (`gh pr view <first PR> --json state,body`). If it is not `OPEN`, leave it: nobody reviews from a closed PR. In the PR column, set this step's row to `#<n> (open)`, and check each other row's PR with `gh pr view <n> --json state`: `(open)`, `(merged)` or `(closed)`. Write the fetched body with only those rows changed to a file, then `gh pr edit <first PR> --body-file <path>`. Do not rebuild the body from memory: you would drop edits made by others.
 
 ## Style
 

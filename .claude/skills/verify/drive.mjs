@@ -66,8 +66,9 @@ const readRun = (dir, name, parse, empty) => {
 }
 
 // A repo with something to open a PR for: `add-farewell` is one commit ahead
-// of `main`, and both are on `origin`.
-function makeRepo(dir) {
+// of `main`, and both are on `origin`. Each of `branches` (the open PRs of
+// --state) is on `origin` too, at `main`.
+function makeRepo(dir, branches) {
   const cwd = path.join(dir, 'cwd')
   const origin = path.join(dir, 'origin.git')
   const git = (...args) => execFileSync('git', args, { cwd, stdio: 'pipe', env: { ...process.env, ...GIT_ID } })
@@ -81,7 +82,8 @@ function makeRepo(dir) {
   git('switch', '-q', '-c', 'add-farewell')
   fs.appendFileSync(path.join(cwd, 'greet.js'), "export const farewell = name => `Goodbye, ${name}`\n")
   git('commit', '-q', '-am', 'Add farewell')
-  git('push', '-q', '-u', 'origin', 'main', 'add-farewell')
+  git('push', '-q', '-u', 'origin', 'main', 'add-farewell', ...branches.map(b => `main:refs/heads/${b}`))
+  if (branches.length) git('fetch', '-q', 'origin')
   return cwd
 }
 
@@ -178,8 +180,11 @@ function evidence(dir, { exit, stream }) {
 
 if (cmd === 'run') {
   const dir = fs.mkdtempSync(path.join(flags.base, PREFIX))
-  const cwd = makeRepo(dir)
-  // A start state for gh, for example PRs that a stack already has.
+  // A start state for gh, for example PRs that a stack already has. The
+  // branches of its open PRs must exist, or Claude stops to ask about them.
+  const seeded = flags.state ? JSON.parse(fs.readFileSync(flags.state, 'utf8')).prs : []
+  const branches = new Set(seeded.filter(p => p.state === 'OPEN').flatMap(p => [p.head, p.base]))
+  const cwd = makeRepo(dir, [...branches].filter(b => b !== 'main' && b !== 'add-farewell'))
   if (flags.state) fs.copyFileSync(flags.state, path.join(dir, 'gh-state.json'))
   const env = { ...process.env, ...GIT_ID, PATH: `${fakeGh(dir)}${path.delimiter}${process.env.PATH}`, FAKE_GH_DIR: dir, GH_PROMPT_DISABLED: '1' }
   console.log(JSON.stringify(evidence(dir, await runSession(dir, cwd, env)), null, 2))
