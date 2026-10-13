@@ -46,8 +46,11 @@ that exist, for example a stack: the format is the `gh-state.json` of an earlier
 The `probes/` folder holds prompt files. Each is a JSON array of prompts.
 
 - `gate.json`: a body without sections. Expect one `gateDenials` entry and no `gh` call.
-- `write.json`: open a PR. Expect `skills` to hold `puredori:pr-write`, and the `gh` body to have `## Intent` and
-  `## Evidence`.
+- `write.json`: open a PR that adds a `package.json` (config) and an exported function, so not small. Expect `skills`
+  to hold `puredori:pr-write`, a `Read` of `references/full-body.md`, and a `gh` body with `## Reading map`. Run it
+  with `--model sonnet` (about $0.20): Haiku calls every tiny diff small and skips the signal check.
+- `small.json`: open a PR for a one-line comment. Expect `puredori:pr-write`, no `Read` of the reference, and a `gh`
+  body with only `## Intent` and `## Evidence`.
 - `mention.json`: a commit message that names `gh pr create --body`. Expect the commit in `toolResults` and no
   `gateDenials`: only a command that runs counts.
 - `plan.json`: code work that ends in a PR. Expect `puredori:pr-plan`, a reply that asks to confirm the intent, and

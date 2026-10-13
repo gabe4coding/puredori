@@ -1,3 +1,3 @@
 [
-  "Open a PR for this branch against main. It adds a farewell function next to greet. Real run output: `node -e \"import('./greet.js').then(m => console.log(m.farewell('Ada')))\"` prints `Goodbye, Ada`."
+  "On this branch, add a package.json with `{\"name\": \"demo\", \"type\": \"module\", \"main\": \"greet.js\"}`, commit it, push, and open a PR against main. The branch adds a farewell function next to greet and makes the package importable. Real run output: `node -e \"import('./greet.js').then(m => console.log(m.farewell('Ada')))\"` prints `Goodbye, Ada`."
 ]
