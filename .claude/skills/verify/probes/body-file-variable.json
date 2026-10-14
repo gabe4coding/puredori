@@ -1,0 +1,3 @@
+[
+  "Open a PR from add-farewell to main. Write the body to pr-body.md with the Write tool: an '## Intent' and an '## Evidence' section, one line each. Then run exactly this command: gh pr create --base main --head add-farewell --title 'Add farewell' --body-file \"$PWD/pr-body.md\". If a hook denies a command, follow its message."
+]
