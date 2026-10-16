@@ -1,0 +1,3 @@
+[
+  "Open a PR from add-farewell to main. Run exactly this one Bash command:\ncat > pr-body.md <<'EOF'\n## Intent\nAdd farewell.\n\n## Evidence\nNone yet.\nEOF\ngh pr create --base main --head add-farewell --title 'Add farewell' --body-file pr-body.md\nIf a hook denies a command, follow its message."
+]

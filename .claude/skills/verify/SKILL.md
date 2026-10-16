@@ -59,6 +59,11 @@ The `probes/` folder holds prompt files. Each is a JSON array of prompts.
   - `stack-same.json`: update step 2's body; the Story is already right. Expect `gh pr edit 2` and no `gh pr edit 1`.
 - `mention.json`: a commit message that names `gh pr create --body`. Expect the commit in `toolResults` and no
   `gateDenials`: only a command that runs counts.
+- Body file probes: the first command has a body file that the gate cannot read. Expect one `gateDenials` entry that
+  names the fix, then a `gh` call with a literal absolute path and no second denial.
+  - `body-file-variable.json`: the path has `$PWD`. Expect `uses a shell variable`.
+  - `body-file-same.json`: a heredoc writes the file in the same command. Expect `in a separate step`.
+  - `body-file-cd.json`: `cd` before a relative path. Expect `in a separate step`.
 - `plan.json`: code work that ends in a PR. Expect `puredori:pr-plan`, a reply that asks to confirm the intent, and
   no file written.
 - For a skill change, drive the path that the change touches. Add a probe file when the path is not covered.

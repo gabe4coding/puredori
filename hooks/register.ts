@@ -1,5 +1,12 @@
 import type { Register } from 'claude-code'
-import { bodySources, missingSections } from './gate.ts'
+import { bodySources, hasShellVariable, missingSections } from './gate.ts'
+
+// The fix for a body file that the hook cannot read. Most often the same
+// command writes the file (a redirect, a heredoc, `tee`) or runs `cd` first.
+export const VARIABLE_FIX =
+  'the path uses a shell variable; write the literal path. If this command also writes the file, write it in a separate step (Write tool) first.'
+export const SEPARATE_STEP_FIX =
+  'the hook reads it before the command runs, from the session directory. Write the body file in a separate step (Write tool), then run gh with its absolute path.'
 
 // The rules are hooks/rules.md, sent by a SessionStart command hook in hooks.json:
 // Claude Code's built-in security module bypasses the prompt.compose and
@@ -12,9 +19,8 @@ export const register: Register = on => {
       if (source.kind === 'file') {
         body = await $.fs.read(source.path).catch(() => undefined)
         if (body === undefined) {
-          return {
-            deny: `${$.plugin.name}: cannot read the PR body file ${source.path}. Write it first, then run the command again.`,
-          }
+          const fix = hasShellVariable(source.path) ? VARIABLE_FIX : SEPARATE_STEP_FIX
+          return { deny: `${$.plugin.name}: cannot read the PR body file ${source.path}: ${fix}` }
         }
       }
 

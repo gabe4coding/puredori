@@ -126,5 +126,6 @@ say.
 | Message | Cause | Fix |
 | --- | --- | --- |
 | `the PR body has no "## Intent" or "## Evidence" section` | The body has no such heading | Load `pr-write`, write the body to a file, run the command again with `--body-file` |
-| `cannot read the PR body file` | The file did not exist when the command started | Write the file with a different command before the `gh` command, and use its full path |
+| `cannot read the PR body file ...: the path uses a shell variable` | The path has a `$` or a backtick | Use the literal path. If the same command writes the file, write it in a separate step. |
+| `cannot read the PR body file ...: the hook reads it before the command runs` | The file did not exist when the command started. For example, the same command writes it, or a `cd` comes before a relative path. | Write the file with the Write tool in a separate step, then run `gh` with its absolute path |
 | `the PR gate failed` | An error in the gate | Check the body by hand with `pr-write` |

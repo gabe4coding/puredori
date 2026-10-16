@@ -196,5 +196,8 @@ const bodySource = ({ words, stdin }: Segment): BodySource[] => {
 export const bodySources = (command: string): BodySource[] =>
   command.includes('gh') ? lex(command, 0, false).segments.flatMap(bodySource) : []
 
+// A path with a `$` or a backtick: the hook reads it with no shell expansion.
+export const hasShellVariable = (path: string) => /[$`]/.test(path)
+
 export const missingSections = (body: string): string[] =>
   SECTIONS.filter(({ pattern }) => !pattern.test(body)).map(({ name }) => name)

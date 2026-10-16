@@ -1,5 +1,6 @@
 import { test, expect } from 'claude-code/testing'
-import { bodySources, missingSections } from '../hooks/gate.ts'
+import { bodySources, hasShellVariable, missingSections } from '../hooks/gate.ts'
+import { SEPARATE_STEP_FIX, VARIABLE_FIX } from '../hooks/register.ts'
 
 const BODY = '## Intent\nAdd retry to the payment client.\n\n## Evidence\ncurl output before and after'
 
@@ -46,6 +47,14 @@ test('bodySources ignores text that only names the command', async () => {
   expect(bodySources('gh pr edit 12 --add-label bug 2>&1 | tail -1')).toEqual([])
 })
 
+test('hasShellVariable finds a path that the shell expands', async () => {
+  expect(hasShellVariable('$S/b.md')).toBe(true)
+  expect(hasShellVariable('${S}/b.md')).toBe(true)
+  expect(hasShellVariable('`pwd`/b.md')).toBe(true)
+  expect(hasShellVariable('/tmp/b.md')).toBe(false)
+  expect(hasShellVariable('b.md')).toBe(false)
+})
+
 test('missingSections names what the body lacks', async () => {
   expect(missingSections('## Intent\nx\n## Evidence\ny')).toEqual([])
   expect(missingSections('### intent\nx')).toEqual(['Evidence'])
@@ -74,4 +83,18 @@ test('the gate blocks a PR body without the required sections', async ($, on) =>
 
   const other = await $.tool.call({ tool: 'Bash', command: 'git log -1' })
   expect(other.deny).toBeUndefined()
+})
+
+test('the gate names the fix for a body file it cannot read', async ($, on) => {
+  on('tool.call', { tool: 'Bash' }, () => ({ result: 'ran' }) as never)
+
+  const variable = await $.tool.call({ tool: 'Bash', command: 'S=/tmp/x && gh pr edit 1 --body-file "$S/b.md"' })
+  expect(variable.deny).toContain(`cannot read the PR body file $S/b.md: ${VARIABLE_FIX}`)
+
+  // The same command writes the file: the hook reads it before the command runs.
+  const written = await $.tool.call({ tool: 'Bash', command: 'cat > /nonexistent/b.md <<EOF\nx\nEOF\ngh pr create -F /nonexistent/b.md' })
+  expect(written.deny).toContain(`cannot read the PR body file /nonexistent/b.md: ${SEPARATE_STEP_FIX}`)
+
+  const cd = await $.tool.call({ tool: 'Bash', command: 'cd /nonexistent && gh pr edit 1 --body-file b.md' })
+  expect(cd.deny).toContain(SEPARATE_STEP_FIX)
 })
