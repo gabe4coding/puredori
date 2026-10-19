@@ -27,10 +27,11 @@ def f(path, added=(), removed=(), status="M", old_path=None):
     return rt.FileChange(path=path, status=status, added=list(added), removed=list(removed), old_path=old_path)
 
 
-def tier(*files, title="", branch="", body="", read=None, automerge="", checks=None, head_sha=""):
+def tier(*files, title="", branch="", body="", read=None, automerge="", checks=None, head_sha="",
+         comments=None):
     change = rt.Change(files=list(files), title=title, branch=branch, body=body,
                        read=read or (lambda p, s: None), automerge=automerge,
-                       checks=checks, head_sha=head_sha)
+                       checks=checks, comments=comments, head_sha=head_sha)
     return rt.classify(change, RULES)
 
 
@@ -436,13 +437,44 @@ def greptile(conclusion="success", status="completed", sha=HEAD, app="greptile-a
     return run
 
 
-def test_a_passing_greptile_check_does_not_lower_the_tier():
+def summary_comment(score=5, sha=HEAD, updated="2026-10-19T00:00:00Z", login="greptile-apps[bot]",
+                    type_="Bot", extra=""):
+    body = (
+        "<!-- greptile_summary -->\n"
+        f"<h2>Confidence Score: {score}/5</h2>\n"
+        f"<!-- greptile_confidence_score:{score} -->\n"
+        f'<sub>Last reviewed commit: ["t"](https://github.com/example/repo/commit/{sha})</sub>\n'
+        + extra
+    )
+    return {"body": body, "created_at": updated, "updated_at": updated,
+            "user": {"login": login, "type": type_}}
+
+
+def review_comment(badge, sha, login="greptile-apps[bot]", type_="Bot"):
+    return {
+        "commit_id": sha,
+        "body": f'<img alt="{badge}" src="https://greptile-static-assets.s3.amazonaws.com/badges/{badge.lower()}.svg">',
+        "created_at": "2026-10-19T00:00:00Z",
+        "user": {"login": login, "type": type_},
+    }
+
+
+def greptile_comments(score=5, sha=HEAD, reviews=(), **kwargs):
+    return {"issue_comments": [summary_comment(score, sha, **kwargs)], "review_comments": list(reviews)}
+
+
+def test_a_greptile_pass_does_not_lower_the_tier():
     ok = [greptile()]
-    assert rt.reviewer_passed({"check_runs": ok}, HEAD) is True
-    assert tier(f("README.md", ["x"]), checks=ok, head_sha=HEAD)["tier"] == "T0"
-    soft = tier(f(".github/workflows/test.yml", ["  lint:", "    runs-on: ubuntu-latest"]), checks=ok, head_sha=HEAD)
+    comments = greptile_comments()
+    assert rt.reviewer_passed({"check_runs": ok}, HEAD, comments) is True
+    assert tier(f("README.md", ["x"]), checks=ok, comments=comments, head_sha=HEAD)["tier"] == "T0"
+    soft = tier(f(".github/workflows/test.yml", ["  lint:", "    runs-on: ubuntu-latest"]),
+                checks=ok, comments=comments, head_sha=HEAD)
     assert soft["tier"] == "T2-soft" and not any(x["rule"] == "reviewer-not-passed" for x in soft["reasons"])
-    assert tier(f("LICENSE", ["x"]), checks=ok, head_sha=HEAD)["tier"] == "T2-hard"
+    assert tier(f("LICENSE", ["x"]), checks=ok, comments=comments, head_sha=HEAD)["tier"] == "T2-hard"
+    # a successful check on its own is not a pass
+    assert rt.reviewer_state(ok, HEAD) == "no-summary"
+    assert tier(f("README.md", ["x"]), checks=ok, head_sha=HEAD)["tier"] == "T1"
 
 
 def test_a_failed_greptile_check_raises_one_tier():
@@ -477,8 +509,9 @@ def test_a_greptile_check_on_an_old_sha_does_not_pass():
     assert tier(f("README.md", ["x"]), checks=old, head_sha=HEAD)["tier"] == "T1"
     # a failure on the previous head does not block a pass on this head
     both = [greptile("failure", sha=OLD), greptile(sha=HEAD)]
-    assert rt.reviewer_passed(both, HEAD) is True
-    assert tier(f("README.md", ["x"]), checks=both, head_sha=HEAD)["tier"] == "T0"
+    comments = greptile_comments()
+    assert rt.reviewer_passed(both, HEAD, comments) is True
+    assert tier(f("README.md", ["x"]), checks=both, comments=comments, head_sha=HEAD)["tier"] == "T0"
 
 
 def test_a_pending_greptile_check_raises():
@@ -497,13 +530,120 @@ def test_a_later_failure_on_this_head_beats_an_earlier_pass():
 def test_a_later_pass_on_this_head_clears_an_earlier_failure():
     runs = [greptile("failure", completed_at="2026-10-19T00:00:00Z"),
             greptile(completed_at="2026-10-19T01:00:00Z")]
-    assert rt.reviewer_state(runs, HEAD) == "passed"
-    assert tier(f("README.md", ["x"]), checks=runs, head_sha=HEAD)["tier"] == "T0"
+    comments = greptile_comments()
+    assert rt.reviewer_state(runs, HEAD, comments) == "passed"
+    assert tier(f("README.md", ["x"]), checks=runs, comments=comments, head_sha=HEAD)["tier"] == "T0"
 
 
 def test_cli_raises_when_greptile_is_missing(tmp_path):
     r = _pr_repo(tmp_path, {"README.md": "a\n"}, {"README.md": "a\nb\n"}, checks={"check_runs": []})
     assert r["tier"] == "T1" and any(x["rule"] == "reviewer-not-passed" for x in r["reasons"])
+
+
+# ---------------------------------------------------------------- Greptile pass rule
+
+
+FIX = json.loads((HERE / "fixtures" / "greptile-claude-code-mode-47.json").read_text(encoding="utf-8"))
+FIX_SHA = FIX["head_sha"]
+
+
+def test_the_real_greptile_review_on_claude_code_mode_47_is_not_a_pass():
+    # The check concluded success. The summary is 0/5 and three inline comments on that commit are P1.
+    checks = [greptile(sha=FIX_SHA)]
+    assert rt.reviewer_passed(checks, FIX_SHA, FIX) is False
+    assert rt.reviewer_state(checks, FIX_SHA, FIX) == "low-score"
+    assert len(rt.blocking_review_comments(FIX, FIX_SHA)) == 3
+    summary = rt.latest_greptile_summary(FIX)
+    assert rt.parse_greptile_summary(summary["body"]) == (FIX_SHA, 0)
+    # the same P1 comments block a summary that would otherwise pass
+    high = {"issue_comments": [summary_comment(5, FIX_SHA)], "review_comments": FIX["review_comments"]}
+    assert rt.reviewer_state(checks, FIX_SHA, high) == "blocking-comment"
+    docs = tier(f("README.md", ["x"]), checks=checks, comments=FIX, head_sha=FIX_SHA)
+    assert docs["tier"] == "T1" and docs["reasons"][0]["rule"] == "reviewer-not-passed"
+
+
+@pytest.mark.parametrize("score", [4, 5])
+def test_a_high_greptile_score_with_no_blocking_comment_passes(score):
+    comments = greptile_comments(score)
+    assert rt.reviewer_state([greptile()], HEAD, comments) == "passed"
+    assert tier(f("README.md", ["x"]), checks=[greptile()], comments=comments, head_sha=HEAD)["tier"] == "T0"
+
+
+def test_a_greptile_score_of_3_is_not_a_pass():
+    comments = greptile_comments(3)
+    assert rt.reviewer_state([greptile()], HEAD, comments) == "low-score"
+    assert tier(f("README.md", ["x"]), checks=[greptile()], comments=comments, head_sha=HEAD)["tier"] == "T1"
+
+
+def test_a_greptile_summary_on_an_old_sha_is_not_a_pass():
+    comments = greptile_comments(sha=OLD)
+    assert rt.reviewer_state([greptile()], HEAD, comments) == "stale-summary"
+    assert tier(f("README.md", ["x"]), checks=[greptile()], comments=comments, head_sha=HEAD)["tier"] == "T1"
+
+
+def test_a_missing_greptile_summary_is_not_a_pass():
+    comments = {"issue_comments": [], "review_comments": [], "labels": ["greptile:passed"]}
+    assert rt.reviewer_state([greptile()], HEAD, comments) == "no-summary"
+
+
+def test_an_unparseable_greptile_score_is_not_a_pass():
+    comment = summary_comment()
+    comment["body"] = comment["body"].replace("Confidence Score: 5/5", "Confidence Score: high/5")
+    comments = {"issue_comments": [comment], "review_comments": []}
+    assert rt.parse_greptile_summary(comment["body"]) is None
+    assert rt.reviewer_state([greptile()], HEAD, comments) == "unparseable"
+
+
+def test_a_p0_inline_comment_on_this_head_is_not_a_pass():
+    comments = greptile_comments(reviews=[review_comment("P0", HEAD)])
+    assert rt.reviewer_state([greptile()], HEAD, comments) == "blocking-comment"
+    assert tier(f("README.md", ["x"]), checks=[greptile()], comments=comments, head_sha=HEAD)["tier"] == "T1"
+
+
+def test_a_p1_inline_comment_on_an_old_commit_does_not_block():
+    comments = greptile_comments(reviews=[review_comment("P1", OLD)])
+    assert rt.blocking_review_comments(comments, HEAD) == []
+    assert rt.reviewer_state([greptile()], HEAD, comments) == "passed"
+    assert tier(f("README.md", ["x"]), checks=[greptile()], comments=comments, head_sha=HEAD)["tier"] == "T0"
+
+
+def test_the_same_summary_from_another_author_is_not_a_pass():
+    foreign = summary_comment(login="not-greptile[bot]")
+    wrong_type = summary_comment(type_="User")
+    for comment in (foreign, wrong_type):
+        comments = {"issue_comments": [comment], "review_comments": [review_comment("P1", HEAD, login=comment["user"]["login"], type_=comment["user"]["type"])]}
+        assert rt.reviewer_state([greptile()], HEAD, comments) == "no-summary"
+
+
+def test_a_failed_check_with_a_good_comment_is_not_a_pass():
+    comments = greptile_comments()
+    assert rt.reviewer_state([greptile("failure")], HEAD, comments) == "failed"
+    assert tier(f("README.md", ["x"]), checks=[greptile("failure")], comments=comments, head_sha=HEAD)["tier"] == "T1"
+
+
+def test_the_latest_greptile_summary_wins():
+    older = summary_comment(5, updated="2026-10-19T00:00:00Z")
+    newer = summary_comment(0, updated="2026-10-19T01:00:00Z")
+    low = {"issue_comments": [older, newer], "review_comments": []}
+    high = {"issue_comments": [newer, older], "review_comments": []}
+    assert rt.reviewer_state([greptile()], HEAD, low) == "low-score"
+    # updated_at orders them, not list order
+    older["updated_at"] = "2026-10-19T02:00:00Z"
+    assert rt.reviewer_state([greptile()], HEAD, high) == "passed"
+
+
+def test_a_p2_badge_and_a_summary_finding_do_not_block():
+    comments = greptile_comments(
+        reviews=[review_comment("P2", HEAD)],
+        extra='<img alt="P1" src="https://greptile-static-assets.s3.amazonaws.com/badges/p1.svg">',
+    )
+    assert rt.reviewer_state([greptile()], HEAD, comments) == "passed"
+
+
+def test_a_non_pass_does_not_change_hold(monkeypatch):
+    monkeypatch.setitem(RULES, "hold", {**RULES["hold"], "forbidden_names_sha256": [hashlib.sha256(b"acmebrand").hexdigest()]})
+    r = tier(f("README.md", ["Install the AcmeBrand plugin"]), checks=[greptile("failure")], head_sha=HEAD)
+    assert r["tier"] == "HOLD"
 
 
 @pytest.mark.parametrize("path", ["greptile.json", "dir/greptile.json", ".greptile/config.yml",

@@ -10,10 +10,11 @@
 # Only the classifier tests run the PR's code, on `pull_request`, with a read-only token.
 # A consumer of the tier (auto-merge) must read the "risk tier" check of a pull_request_target run of
 # .github/workflows/risk.yml, never a label or a check from a `pull_request` run: a PR can forge those.
-# The reviewer signal is only the "Greptile Review" check run of app greptile-apps on the current
-# head SHA. A pass does not lower the tier. A failed, missing, pending or stale check raises it
-# one step. Labels and comments are not read. The job reads the check when it runs: a review that
-# is still pending raises the tier until this job runs again.
+# A Greptile pass needs all three on the current head SHA: a successful "Greptile Review" check
+# from app greptile-apps, a summary comment from greptile-apps[bot] with confidence at least 4/5
+# for that commit, and no P0 or P1 inline comment from that bot on that commit. Anything else
+# raises the tier one step. A pass does not lower a tier. Labels are not read, and comments from
+# any other author are not read. The job reads these when it runs.
 name: risk
 
 on:
@@ -51,8 +52,9 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      pull-requests: write   # the risk:* label
-      checks: write          # the "risk tier" check run
+      issues: read           # Greptile's summary comment
+      pull-requests: write   # the risk:* label; also reads inline review comments
+      checks: write          # the "risk tier" check run; also reads Greptile's check
     steps:
       # The base branch: this file, .github/risk.yml and the classifier as the base has them.
       # The stored credentials are safe here: no step runs a file of the PR.
@@ -69,18 +71,65 @@ jobs:
           git fetch --no-tags --quiet origin "+refs/pull/$PR/head:refs/remotes/pr/head"
           git cat-file -e "$HEAD_SHA^{commit}"
 
-      - name: Greptile Review check on this head
-        # Data only: the check-run list. A comment or a label is not read. An API failure is "missing".
+      - name: Greptile review on this head
+        # GET only. An API failure is a missing check or a missing summary, which is not a pass.
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          # Name filter keeps the run on the first page. The app slug and the head SHA are checked later.
           if ! gh api -X GET "repos/$REPO/commits/$HEAD_SHA/check-runs" \
               -f check_name="Greptile Review" -F per_page=100 > "$RUNNER_TEMP/checks.json"; then
             echo '{"check_runs":[]}' > "$RUNNER_TEMP/checks.json"
           fi
+          python3 -I - "$RUNNER_TEMP/comments.json" <<'PY'
+          import json, os, subprocess, sys
+
+          def pages(path):
+              proc = subprocess.run(["gh", "api", "--paginate", path], capture_output=True, text=True)
+              if proc.returncode != 0:
+                  return None
+              dec = json.JSONDecoder()
+              text, i, items = proc.stdout, 0, []
+              while i < len(text):
+                  while i < len(text) and text[i].isspace():
+                      i += 1
+                  if i >= len(text):
+                      break
+                  try:
+                      val, i = dec.raw_decode(text, i)
+                  except json.JSONDecodeError:
+                      return None
+                  if isinstance(val, list):
+                      items.extend(val)
+                  elif isinstance(val, dict):
+                      items.append(val)
+              return items
+
+          repo, pr = os.environ["REPO"], os.environ["PR"]
+          issues = pages(f"repos/{repo}/issues/{pr}/comments?per_page=100")
+          reviews = pages(f"repos/{repo}/pulls/{pr}/comments?per_page=100")
+          if issues is None or reviews is None:
+              issues, reviews = [], []
+
+          def user(c):
+              u = c.get("user") or {}
+              return {"login": u.get("login"), "type": u.get("type")}
+
+          out = {
+              "issue_comments": [
+                  {"id": c.get("id"), "body": c.get("body") or "",
+                   "created_at": c.get("created_at"), "updated_at": c.get("updated_at"), "user": user(c)}
+                  for c in issues if isinstance(c, dict)],
+              "review_comments": [
+                  {"id": c.get("id"), "body": c.get("body") or "", "commit_id": c.get("commit_id"),
+                   "created_at": c.get("created_at"), "updated_at": c.get("updated_at"), "user": user(c)}
+                  for c in reviews if isinstance(c, dict)],
+          }
+          with open(sys.argv[1], "w", encoding="utf-8") as fh:
+              json.dump(out, fh)
+          PY
 
       - name: Classify
         id: tier
@@ -98,6 +147,7 @@ jobs:
             --rules .github/risk.yml --base "$BASE_SHA" --head "$HEAD_SHA" \
             --title="$PR_TITLE" --branch="$PR_BRANCH" --body-file "$RUNNER_TEMP/body.txt" \
             --automerge="$AUTOMERGE" --checks-file "$RUNNER_TEMP/checks.json" \
+            --comments-file "$RUNNER_TEMP/comments.json" \
             --note="Rules and classifier from the base branch ($GITHUB_SHA)." \
             --json "$RUNNER_TEMP/risk.json" --markdown "$RUNNER_TEMP/risk.md"
           python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1])); print("tier="+d["tier"]); print("label="+d["label"])' \
