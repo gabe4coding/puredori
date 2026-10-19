@@ -10,6 +10,10 @@
 # Only the classifier tests run the PR's code, on `pull_request`, with a read-only token.
 # A consumer of the tier (auto-merge) must read the "risk tier" check of a pull_request_target run of
 # .github/workflows/risk.yml, never a label or a check from a `pull_request` run: a PR can forge those.
+# The reviewer signal is only the "Greptile Review" check run of app greptile-apps on the current
+# head SHA. A pass does not lower the tier. A failed, missing, pending or stale check raises it
+# one step. Labels and comments are not read. The job reads the check when it runs: a review that
+# is still pending raises the tier until this job runs again.
 name: risk
 
 on:
@@ -65,6 +69,19 @@ jobs:
           git fetch --no-tags --quiet origin "+refs/pull/$PR/head:refs/remotes/pr/head"
           git cat-file -e "$HEAD_SHA^{commit}"
 
+      - name: Greptile Review check on this head
+        # Data only: the check-run list. A comment or a label is not read. An API failure is "missing".
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Name filter keeps the run on the first page. The app slug and the head SHA are checked later.
+          if ! gh api -X GET "repos/$REPO/commits/$HEAD_SHA/check-runs" \
+              -f check_name="Greptile Review" -F per_page=100 > "$RUNNER_TEMP/checks.json"; then
+            echo '{"check_runs":[]}' > "$RUNNER_TEMP/checks.json"
+          fi
+
       - name: Classify
         id: tier
         env:
@@ -80,7 +97,8 @@ jobs:
           uv run --no-config --no-project --python 3.12 --with pyyaml==6.0.2 -- python -I .github/scripts/risk_tier.py \
             --rules .github/risk.yml --base "$BASE_SHA" --head "$HEAD_SHA" \
             --title="$PR_TITLE" --branch="$PR_BRANCH" --body-file "$RUNNER_TEMP/body.txt" \
-            --automerge="$AUTOMERGE" --note="Rules and classifier from the base branch ($GITHUB_SHA)." \
+            --automerge="$AUTOMERGE" --checks-file "$RUNNER_TEMP/checks.json" \
+            --note="Rules and classifier from the base branch ($GITHUB_SHA)." \
             --json "$RUNNER_TEMP/risk.json" --markdown "$RUNNER_TEMP/risk.md"
           python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1])); print("tier="+d["tier"]); print("label="+d["label"])' \
             "$RUNNER_TEMP/risk.json" >> "$GITHUB_OUTPUT"

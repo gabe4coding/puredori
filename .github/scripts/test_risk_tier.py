@@ -27,9 +27,10 @@ def f(path, added=(), removed=(), status="M", old_path=None):
     return rt.FileChange(path=path, status=status, added=list(added), removed=list(removed), old_path=old_path)
 
 
-def tier(*files, title="", branch="", body="", read=None, automerge=""):
+def tier(*files, title="", branch="", body="", read=None, automerge="", checks=None, head_sha=""):
     change = rt.Change(files=list(files), title=title, branch=branch, body=body,
-                       read=read or (lambda p, s: None), automerge=automerge)
+                       read=read or (lambda p, s: None), automerge=automerge,
+                       checks=checks, head_sha=head_sha)
     return rt.classify(change, RULES)
 
 
@@ -337,7 +338,7 @@ def test_cli_on_a_git_repo(tmp_path):
 # ---------------------------------------------------------------- ways around the tier
 
 
-def _pr_repo(tmp_path, base_files, pr_files, rules_text=None):
+def _pr_repo(tmp_path, base_files, pr_files, rules_text=None, checks=None):
     """A repo with `base_files` on main and `pr_files` changed on branch pr; the tier of pr."""
     def git(*args):
         subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *args], cwd=tmp_path, check=True,
@@ -361,7 +362,12 @@ def _pr_repo(tmp_path, base_files, pr_files, rules_text=None):
     os.chdir(tmp_path)
     try:
         out = tmp_path.parent / f"{tmp_path.name}-out.json"
-        assert rt.main(["--rules", str(rules), "--base", "main", "--head", "pr", "--json", str(out)]) == 0
+        argv = ["--rules", str(rules), "--base", "main", "--head", "pr", "--json", str(out)]
+        if checks is not None:
+            checks_path = tmp_path.parent / f"{tmp_path.name}-checks.json"
+            checks_path.write_text(json.dumps(checks), encoding="utf-8")
+            argv += ["--checks-file", str(checks_path)]
+        assert rt.main(argv) == 0
     finally:
         os.chdir(cwd)
     return json.loads(out.read_text())
@@ -413,3 +419,95 @@ def test_a_diff_that_git_lists_otherwise_is_t2_hard():
 def test_parse_name_status_reads_raw_paths():
     out = rt.parse_name_status("M\0a b/c.md\0R087\0old.py\0new.py\0A\0ré\t.yml\0")
     assert out == [("M", None, "a b/c.md"), ("R", "old.py", "new.py"), ("A", None, "ré\t.yml")]
+
+
+# ---------------------------------------------------------------- reviewer signal and reviewer config
+
+
+HEAD = "a" * 40
+OLD = "b" * 40
+
+
+def greptile(conclusion="success", status="completed", sha=HEAD, app="greptile-apps", name="Greptile Review",
+             completed_at=""):
+    run = {"name": name, "status": status, "conclusion": conclusion, "head_sha": sha, "app": {"slug": app}}
+    if completed_at:
+        run["completed_at"] = completed_at
+    return run
+
+
+def test_a_passing_greptile_check_does_not_lower_the_tier():
+    ok = [greptile()]
+    assert rt.reviewer_passed({"check_runs": ok}, HEAD) is True
+    assert tier(f("README.md", ["x"]), checks=ok, head_sha=HEAD)["tier"] == "T0"
+    soft = tier(f(".github/workflows/test.yml", ["  lint:", "    runs-on: ubuntu-latest"]), checks=ok, head_sha=HEAD)
+    assert soft["tier"] == "T2-soft" and not any(x["rule"] == "reviewer-not-passed" for x in soft["reasons"])
+    assert tier(f("LICENSE", ["x"]), checks=ok, head_sha=HEAD)["tier"] == "T2-hard"
+
+
+def test_a_failed_greptile_check_raises_one_tier():
+    bad = [greptile("failure")]
+    assert rt.reviewer_state(bad, HEAD) == "failed"
+    docs = tier(f("README.md", ["x"]), checks=bad, head_sha=HEAD)
+    assert docs["tier"] == "T1" and docs["reasons"][0]["rule"] == "reviewer-not-passed"
+    assert tier(f("src/a.py", ["x"]), checks=bad, head_sha=HEAD)["tier"] == "T2-soft"
+    soft = tier(f(".github/workflows/test.yml", ["  lint:"]), checks=bad, head_sha=HEAD)
+    assert soft["tier"] == "T2-hard"
+    # a failure cannot turn T2-hard into HOLD
+    assert tier(f("LICENSE", ["x"]), checks=bad, head_sha=HEAD)["tier"] == "T2-hard"
+
+
+def test_a_missing_greptile_check_raises():
+    assert rt.reviewer_state([], HEAD) == "missing"
+    # a comment body and a label are not the check run
+    noise = [{"body": "Greptile Review passed, confidence 5/5"}, {"name": "risk:t0"}]
+    r = tier(f("README.md", ["x"]), checks=noise, head_sha=HEAD)
+    assert r["tier"] == "T1" and "missing" in r["reasons"][0]["detail"]
+
+
+def test_a_greptile_check_from_the_wrong_app_does_not_pass():
+    forged = [greptile(app="github-actions")]
+    assert rt.reviewer_passed(forged, HEAD) is False
+    assert tier(f("README.md", ["x"]), checks=forged, head_sha=HEAD)["tier"] == "T1"
+
+
+def test_a_greptile_check_on_an_old_sha_does_not_pass():
+    old = [greptile(sha=OLD)]
+    assert rt.reviewer_state(old, HEAD) == "stale"
+    assert tier(f("README.md", ["x"]), checks=old, head_sha=HEAD)["tier"] == "T1"
+    # a failure on the previous head does not block a pass on this head
+    both = [greptile("failure", sha=OLD), greptile(sha=HEAD)]
+    assert rt.reviewer_passed(both, HEAD) is True
+    assert tier(f("README.md", ["x"]), checks=both, head_sha=HEAD)["tier"] == "T0"
+
+
+def test_a_pending_greptile_check_raises():
+    pending = [greptile(conclusion=None, status="in_progress")]
+    assert rt.reviewer_state(pending, HEAD) == "pending"
+    assert tier(f("README.md", ["x"]), checks=pending, head_sha=HEAD)["tier"] == "T1"
+
+
+def test_a_later_failure_on_this_head_beats_an_earlier_pass():
+    runs = [greptile(completed_at="2026-10-19T00:00:00Z"),
+            greptile("failure", completed_at="2026-10-19T01:00:00Z")]
+    assert rt.reviewer_state(runs, HEAD) == "failed"
+    assert tier(f("README.md", ["x"]), checks=runs, head_sha=HEAD)["tier"] == "T1"
+
+
+def test_a_later_pass_on_this_head_clears_an_earlier_failure():
+    runs = [greptile("failure", completed_at="2026-10-19T00:00:00Z"),
+            greptile(completed_at="2026-10-19T01:00:00Z")]
+    assert rt.reviewer_state(runs, HEAD) == "passed"
+    assert tier(f("README.md", ["x"]), checks=runs, head_sha=HEAD)["tier"] == "T0"
+
+
+def test_cli_raises_when_greptile_is_missing(tmp_path):
+    r = _pr_repo(tmp_path, {"README.md": "a\n"}, {"README.md": "a\nb\n"}, checks={"check_runs": []})
+    assert r["tier"] == "T1" and any(x["rule"] == "reviewer-not-passed" for x in r["reasons"])
+
+
+@pytest.mark.parametrize("path", ["greptile.json", "dir/greptile.json", ".greptile/config.yml",
+                                  ".greptile/a/b.json", ".coderabbit.yaml", ".coderabbit.yml",
+                                  "pkg/.coderabbit.yml"])
+def test_reviewer_config_is_t2_hard(path):
+    assert tier(f(path, ["x"]))["tier"] == "T2-hard"

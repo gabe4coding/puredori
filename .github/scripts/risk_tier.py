@@ -3,14 +3,17 @@
 
 Shadow week: the tier is advisory. The `risk` workflow posts it as a check summary and a
 `risk:*` label, and never merges. The rules come from `.github/risk.yml` on the BASE branch,
-so a pull request cannot loosen its own rules.
+so a pull request cannot loosen its own rules. The reviewer signal is the "Greptile Review"
+check run of app `greptile-apps` on the current head (`--checks-file`). A pass does not lower
+the tier. A failed, missing, pending or stale check raises it one step, never past T2-hard.
 
     risk_tier.py --rules RULES.yml --base BASE_SHA --head HEAD_SHA \
         [--title T] [--branch B] [--body-file F] [--automerge off] \
+        [--checks-file CHECKS.json] \
         [--json OUT.json] [--markdown OUT.md]
 
-The core (`classify`) is a pure function of the changed files, the PR text and the base and
-head contents of a few manifests; `collect` reads them from git. No network, no LLM.
+The core (`classify`) is a pure function of the changed files, the PR text, the check runs and
+the base and head contents of a few manifests; `collect` reads the files from git. No network, no LLM.
 """
 
 from __future__ import annotations
@@ -72,6 +75,9 @@ class Change:
     automerge: str = ""
     # set when git's file list and its diff do not agree: the files cannot be trusted
     problem: str = ""
+    # check-runs payload (a list, or {"check_runs": [...]}). None: the signal was not supplied.
+    checks: object = None
+    head_sha: str = ""
 
 
 @dataclass
@@ -386,6 +392,18 @@ def classify(change: Change, rules: dict) -> dict:
     if str(change.automerge).strip().lower() == "off":
         reasons.append(Reason("T2-hard", "kill-switch", "repo variable AUTOMERGE=off: every PR goes to Gabe"))
 
+    # A pass adds nothing: the reviewer can raise a tier and cannot lower one. Not supplied (None)
+    # leaves the deterministic tier, so a caller that has no check-run payload stays as it was.
+    if change.checks is not None:
+        state = reviewer_state(change.checks, change.head_sha)
+        if state != "passed":
+            current = max((r.tier for r in reasons), key=TIERS.index)
+            # One step, and no further than T2-hard. The default covers T2-hard and HOLD: a review
+            # failure is not a HOLD, and a T2-hard reason cannot lower a HOLD.
+            raised = {"T0": "T1", "T1": "T2-soft", "T2-soft": "T2-hard"}.get(current, "T2-hard")
+            reasons.append(Reason(raised, "reviewer-not-passed",
+                                  f"Greptile Review has not passed on this head ({state})"))
+
     tier = max((r.tier for r in reasons), key=TIERS.index)
     return {
         "tier": tier,
@@ -475,6 +493,48 @@ def git_reader(base: str, head: str) -> Callable[[str, str], Optional[str]]:
     return read
 
 
+GREPTILE_CHECK = "Greptile Review"
+GREPTILE_APP = "greptile-apps"
+
+
+def _check_runs(payload) -> List[dict]:
+    if isinstance(payload, dict):
+        payload = payload.get("check_runs") or []
+    if not isinstance(payload, list):
+        return []
+    return [c for c in payload if isinstance(c, dict)]
+
+
+def reviewer_state(checks, head_sha: str) -> str:
+    """How the Greptile Review check on `head_sha` stands: passed, failed, pending, stale or missing.
+
+    Only a completed success from app `greptile-apps` whose `head_sha` is the current head passes.
+    A run on another SHA is stale. A label or a comment is not a check run, so it is missing.
+    When several runs match this head, the latest `completed_at` wins."""
+    if not head_sha:
+        return "missing"
+    on_head, on_other = [], []
+    for c in _check_runs(checks):
+        app = c.get("app") if isinstance(c.get("app"), dict) else {}
+        if c.get("name") != GREPTILE_CHECK or app.get("slug") != GREPTILE_APP:
+            continue
+        (on_head if c.get("head_sha") == head_sha else on_other).append(c)
+    if not on_head:
+        return "stale" if on_other else "missing"
+    latest = max(on_head, key=lambda c: c.get("completed_at") or c.get("started_at") or "")
+    if latest.get("status") != "completed":
+        return "pending"
+    if latest.get("conclusion") == "stale":
+        return "stale"
+    if latest.get("conclusion") != "success":
+        return "failed"
+    return "passed"
+
+
+def reviewer_passed(checks, head_sha: str) -> bool:
+    return reviewer_state(checks, head_sha) == "passed"
+
+
 def load_rules(path: str) -> dict:
     import yaml  # PyYAML: the workflow installs it with uv
     with open(path, encoding="utf-8") as fh:
@@ -504,14 +564,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--branch", default="")
     ap.add_argument("--body-file")
     ap.add_argument("--automerge", default="")
+    ap.add_argument("--checks-file", help="check-runs JSON; the Greptile Review signal on this head")
     ap.add_argument("--json")
     ap.add_argument("--markdown")
     ap.add_argument("--note", default="", help="extra line for the markdown summary")
     a = ap.parse_args(argv)
     body = open(a.body_file, encoding="utf-8", errors="replace").read() if a.body_file else ""
+    checks = None
+    if a.checks_file:
+        with open(a.checks_file, encoding="utf-8") as fh:
+            checks = json.load(fh)
     files, merge_base, problem = collect(a.base, a.head)
+    head_sha = _git("rev-parse", "--verify", f"{a.head}^{{commit}}").strip()
     change = Change(files=files, title=a.title, branch=a.branch, body=body,
-                    read=git_reader(merge_base, a.head), automerge=a.automerge, problem=problem)
+                    read=git_reader(merge_base, a.head), automerge=a.automerge, problem=problem,
+                    checks=checks, head_sha=head_sha)
     result = classify(change, load_rules(a.rules))
     if a.json:
         with open(a.json, "w", encoding="utf-8") as fh:
