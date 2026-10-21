@@ -30,6 +30,8 @@ Small: one concern, about 100 changed lines or less, and no signal hits. Write o
 
 <what was asked, one line the prompter can confirm>
 
+<diagram, see Style>
+
 ## Evidence
 
 <real run output: before and after>
@@ -54,5 +56,8 @@ After you open or update a PR of a later step, read the first PR (`gh pr view <f
 - No preamble, no "This PR…", no generic bullets, no list of changed files.
 - Use the repo's domain words (`GLOSSARY.md` if present).
 - Delete every sentence the reviewer would skip.
+- Write in ASD-STE100: one topic per sentence, at most 25 words, active voice, simple present, no "should", "may" or "could".
+- Under the Intent text, add a Mermaid diagram in a fenced block: the parts of the system the change touches and how they connect. Mark the changed parts. The reviewer sees the system with the change before the diff.
+- Keep the text outside code blocks at 1000 words or less: put run output in code blocks.
 
 Write the body to a file in the scratchpad and pass `--body-file`.

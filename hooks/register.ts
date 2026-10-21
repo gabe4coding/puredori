@@ -1,5 +1,5 @@
 import type { Register } from 'claude-code'
-import { bodySources, hasShellVariable, missingSections } from './gate.ts'
+import { bodySources, hasShellVariable, MAX_WORDS, missingSections, proseWords } from './gate.ts'
 
 // The fix for a body file that the hook cannot read. Most often the same
 // command writes the file (a redirect, a heredoc, `tee`) or runs `cd` first.
@@ -30,6 +30,15 @@ export const register: Register = on => {
           deny:
             `${$.plugin.name}: the PR body has no ${missing.map(s => `"## ${s}"`).join(' or ')} section. ` +
             `Load skill ${$.plugin.name}:pr-write, write the body to a file with its template, and run the command again with --body-file.`,
+        }
+      }
+
+      const words = proseWords(body)
+      if (words > MAX_WORDS) {
+        return {
+          deny:
+            `${$.plugin.name}: the PR body has ${words} words outside code blocks (max ${MAX_WORDS}). ` +
+            `Load skill ${$.plugin.name}:pr-write, delete the sentences the reviewer would skip, and run the command again with --body-file.`,
         }
       }
     }

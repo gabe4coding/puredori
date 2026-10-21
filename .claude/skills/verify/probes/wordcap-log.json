@@ -1,0 +1,3 @@
+[
+  "With the Write tool, write pr-body.md in the current directory: the line `## Intent`, the line `Add farewell.`, the line `## Evidence`, the line ```` ```text ````, then the sentence `The farewell function says goodbye to a person by name today.` 110 times, each on its own line, then the line ```` ``` ````. Then run gh pr create --base main --title 'Add farewell' --body-file with the absolute path of that file. Report what happened."
+]
