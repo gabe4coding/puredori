@@ -68,6 +68,7 @@ test('proseWords counts the words outside fenced code blocks', async () => {
   expect(proseWords('a\n```\nopen to the end')).toBe(1)
   expect(proseWords('use `inline code` here')).toBe(4)
   expect(proseWords('- Before:\n    ```\n    log line\n    ```\n- After')).toBe(2)
+  expect(proseWords('> Before:\n> ```text\n> log line\n> ```\nAfter')).toBe(2)
   expect(proseWords('```npm test``` fails\nmore words')).toBe(5)
   expect(proseWords('## Step\n| Step | PR |\n| --- | --- |\n| 1 | #3 (open) |\n- a')).toBe(7)
 })
@@ -83,6 +84,10 @@ test('the gate blocks a PR body over the word cap', async ($, on) => {
   const log = `\`\`\`\n${prose(2 * MAX_WORDS)}\n\`\`\``
   const good = await $.tool.call({ tool: 'Bash', command: `gh pr create --body "${BODY}\n${log}"` })
   expect(good.deny).toBeUndefined()
+
+  const quoted = log.replace(/^/gm, '> ')
+  const quotedLog = await $.tool.call({ tool: 'Bash', command: `gh pr create --body "${BODY}\n${quoted}"` })
+  expect(quotedLog.deny).toBeUndefined()
 })
 
 test('the gate blocks a PR body without the required sections', async ($, on) => {
