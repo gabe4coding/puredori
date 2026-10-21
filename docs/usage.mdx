@@ -59,8 +59,8 @@ Claude loads `pr-write` before it opens a PR. It reads the diff and decides the 
 Each body follows these rules:
 
 - The text is in ASD-STE100 (Simplified Technical English).
-- Under the intent, a Mermaid diagram shows the parts of the system that the change touches. It marks the changed
-  parts.
+- Under the intent, a vertical Mermaid diagram shows the parts of the system that the change touches. It marks the
+  changed parts.
 - The text outside code blocks has 1000 words or less. Run output and diagrams go in code blocks, so they do not
   count.
 
@@ -73,7 +73,7 @@ it also ends with the Step line (see [Stacks and the Story table](#stacks-and-th
 Add the comment `// Greets a person by name.` as the first line of `greet.js`.
 
 ```mermaid
-flowchart LR
+flowchart TD
   cli[cli.js] --> greet["greet.js (changed)"]
 ```
 

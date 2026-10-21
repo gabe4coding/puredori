@@ -57,7 +57,7 @@ After you open or update a PR of a later step, read the first PR (`gh pr view <f
 - Use the repo's domain words (`GLOSSARY.md` if present).
 - Delete every sentence the reviewer would skip.
 - Write in ASD-STE100: one topic per sentence, at most 25 words, active voice, simple present, no "should", "may" or "could".
-- Under the Intent text, add a Mermaid diagram in a fenced block: the parts of the system the change touches and how they connect. Mark the changed parts. The reviewer sees the system with the change before the diff.
+- Under the Intent text, add a Mermaid diagram in a fenced block: the parts of the system the change touches and how they connect. Mark the changed parts. Draw it top to bottom (`flowchart TD`): a vertical diagram is easier to read. The reviewer sees the system with the change before the diff.
 - Keep the text outside code blocks at 1000 words or less: put run output in code blocks.
 
 Write the body to a file in the scratchpad and pass `--body-file`.
