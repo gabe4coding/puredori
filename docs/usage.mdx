@@ -59,8 +59,9 @@ Claude loads `pr-write` before it opens a PR. It reads the diff and decides the 
 Each body follows these rules:
 
 - The text is in ASD-STE100 (Simplified Technical English).
-- Under the intent, a vertical Mermaid diagram shows the parts of the system that the change touches. It marks the
-  changed parts with a label and a thick border. It does not use a fill without a text color of strong contrast.
+- Under the intent, a vertical Mermaid diagram shows what the system does with the change. It is a flow of 8 steps or
+  less, with a decision for each branch and plain words in the labels. It uses the neutral theme and no colors, so it
+  reads well in light and dark mode.
 - The text outside code blocks has 1000 words or less. Run output and diagrams go in code blocks, so they do not
   count.
 
@@ -73,9 +74,10 @@ it also ends with the Step line (see [Stacks and the Story table](#stacks-and-th
 Add the comment `// Greets a person by name.` as the first line of `greet.js`.
 
 ```mermaid
+%%{init: {'theme': 'neutral'}}%%
 flowchart TD
-  cli[cli.js] --> greet["greet.js (changed)"]
-  style greet stroke-width:3px
+  call["Code calls greet with a name"] --> doc["The comment says what greet does"]
+  doc --> reply["greet returns Hello and the name"]
 ```
 
 ## Evidence
