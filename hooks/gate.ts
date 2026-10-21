@@ -201,3 +201,15 @@ export const hasShellVariable = (path: string) => /[$`]/.test(path)
 
 export const missingSections = (body: string): string[] =>
   SECTIONS.filter(({ pattern }) => !pattern.test(body)).map(({ name }) => name)
+
+// The reviewer reads the prose. Run output and diagrams go in fenced code
+// blocks, and a long log must not push a good body over the cap.
+export const MAX_WORDS = 1000
+// A fenced block, also one indented in a list or in a `>` quote, ends at a
+// fence at least as long, or at the end of the body. A backtick fence has no
+// backtick after it: "```npm test``` fails" is inline code.
+const FENCE = /^[ \t>]*(`{3,}(?=[^`\n]*$)|~{3,})[^\n]*$[\s\S]*?(?:^[ \t>]*\1[`~]*[ \t]*$|(?![\s\S]))/gm
+
+// A word has a letter or a digit: table pipes, `---`, `##` and bullets are not words.
+export const proseWords = (body: string): number =>
+  body.replace(FENCE, '').split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length

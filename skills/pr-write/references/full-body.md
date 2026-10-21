@@ -7,7 +7,7 @@ For a PR that is not small.
 
 <what was asked, 1–2 sentences the prompter can confirm>
 
-<optional, big PRs only: one small visual — call tree diff, file tree diff, pseudocode or Mermaid; the smallest view that makes the point>
+<Mermaid diagram of the system with the change, see the skill's Style>
 
 ## Drift
 

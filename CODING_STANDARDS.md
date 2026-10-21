@@ -87,7 +87,7 @@ Technical names are allowed: tool names, options, file and product names.
 | --- | --- | --- |
 | plugin | PuReDoRi as Claude Code installs it. `puredori` in commands. | mod, extension |
 | rules | The text in `hooks/rules.md` that Claude reads at session start | prompt, instructions |
-| PR gate | The hook that stops a PR body without `## Intent` or `## Evidence` | guard, check, validator |
+| PR gate | The hook that stops a PR body without `## Intent` or `## Evidence`, or over 1000 words | guard, check, validator |
 | stack | The PRs of one task, each on the branch of the step before it | chain, series |
 | step | One PR of a stack, with one intent | phase, part |
 | first PR | The PR of step 1. It holds the Story table. | root PR, parent PR |

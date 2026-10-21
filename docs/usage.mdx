@@ -12,7 +12,7 @@ You work with Claude as before. The plugin has four parts. Each part acts at a d
 | Rules | At session start, on resume, after `/clear` and after compaction | Short rules for PR work, from `hooks/rules.md` |
 | `pr-plan` skill | Before code work that ends in a PR | Confirms the intent, plans a stack of small PRs, saves the plan in a draft PR |
 | `pr-write` skill | Before `gh pr create` or `gh pr edit --body` | Writes the PR body and keeps the Story table of the stack current |
-| PR gate | Each Bash command that writes a PR body | Stops a body without `## Intent` or `## Evidence` |
+| PR gate | Each Bash command that writes a PR body | Stops a body without `## Intent` or `## Evidence`, or with too many words |
 
 ## The rules
 
@@ -56,18 +56,34 @@ Claude loads `pr-write` before it opens a PR. It reads the diff and decides the 
 | Public API | Routes, controllers, API schemas, exported functions and types, events and messages |
 | Error handling | Lines that add or remove catch, throw, error returns, retries, timeouts |
 
+Each body follows these rules:
+
+- The text is in ASD-STE100 (Simplified Technical English).
+- Under the intent, a vertical Mermaid diagram shows what the system does with the change. It is a flow of 8 steps or
+  less, with a decision for each branch and plain words in the labels. It uses the neutral theme and no colors, so it
+  reads well in light and dark mode.
+- The text outside code blocks has 1000 words or less. Run output and diagrams go in code blocks, so they do not
+  count.
+
 A small PR has one concern, about 100 changed lines or less, and no signal. Its body has two sections. In a stack,
 it also ends with the Step line (see [Stacks and the Story table](#stacks-and-the-story-table)):
 
-```markdown
+````markdown
 ## Intent
 
 Add the comment `// Greets a person by name.` as the first line of `greet.js`.
 
+```mermaid
+%%{init: {'theme': 'neutral'}}%%
+flowchart TD
+  call["Code calls greet with a name"] --> doc["The comment says what greet does"]
+  doc --> reply["greet returns Hello and the name"]
+```
+
 ## Evidence
 
 After (`cat greet.js`): ...
-```
+````
 
 Any other PR gets the full body:
 
@@ -95,7 +111,9 @@ updates the table:
 The PR gate is a hook on each Bash command. It finds each `gh pr create` and each `gh pr edit` that writes a body.
 Then it reads the body and looks for an `Intent` and an `Evidence` heading (`##` or `###`).
 
-If a heading is missing, the gate stops the command. Claude gets a message that names the missing sections. Then
+It also counts the words outside fenced code blocks. If the body has more than 1000 words, the gate stops the command.
+
+If a heading is missing, the gate stops the command. Claude gets a message that names the problem. Then
 Claude writes the body again and runs the command again.
 
 The gate reads the body from these places:
@@ -118,14 +136,15 @@ The gate does not check these commands:
 - `gh pr create --web`, because you write the body in the browser
 - `gh pr edit` without a body flag, for example a change of the title only
 
-The gate is a reminder for Claude, not a security control. It checks that the sections are there, not what they
-say.
+The gate is a reminder for Claude, not a security control. It checks the sections and the length, not what the
+text says.
 
 ### When the gate stops a command
 
 | Message | Cause | Fix |
 | --- | --- | --- |
 | `the PR body has no "## Intent" or "## Evidence" section` | The body has no such heading | Load `pr-write`, write the body to a file, run the command again with `--body-file` |
+| `the PR body has ... words outside code blocks (max 1000)` | The prose of the body is too long | Delete the sentences that the reviewer does not need. Put run output in code blocks. |
 | `cannot read the PR body file ...: the path uses a shell variable` | The path has a `$` or a backtick | Use the literal path. If the same command writes the file, write it in a separate step. |
 | `cannot read the PR body file ...: the hook reads it before the command runs` | The file did not exist when the command started. For example, the same command writes it, or a `cd` comes before a relative path. | Write the file with the Write tool in a separate step, then run `gh` with its absolute path |
 | `the PR gate failed` | An error in the gate | Check the body by hand with `pr-write` |

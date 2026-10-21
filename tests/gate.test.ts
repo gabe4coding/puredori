@@ -1,5 +1,5 @@
 import { test, expect } from 'claude-code/testing'
-import { bodySources, hasShellVariable, missingSections } from '../hooks/gate.ts'
+import { bodySources, hasShellVariable, MAX_WORDS, missingSections, proseWords } from '../hooks/gate.ts'
 import { SEPARATE_STEP_FIX, VARIABLE_FIX } from '../hooks/register.ts'
 
 const BODY = '## Intent\nAdd retry to the payment client.\n\n## Evidence\ncurl output before and after'
@@ -59,6 +59,35 @@ test('missingSections names what the body lacks', async () => {
   expect(missingSections('## Intent\nx\n## Evidence\ny')).toEqual([])
   expect(missingSections('### intent\nx')).toEqual(['Evidence'])
   expect(missingSections('Intent and Evidence in prose')).toEqual(['Intent', 'Evidence'])
+})
+
+test('proseWords counts the words outside fenced code blocks', async () => {
+  expect(proseWords('## Intent\nAdd retry.')).toBe(3)
+  expect(proseWords('a b\n```text\nlog line one\n```\nc')).toBe(3)
+  expect(proseWords('a\n~~~~ mermaid\nflowchart LR\n~~~\nstill code\n~~~~\nb')).toBe(2)
+  expect(proseWords('a\n```\nopen to the end')).toBe(1)
+  expect(proseWords('use `inline code` here')).toBe(4)
+  expect(proseWords('- Before:\n    ```\n    log line\n    ```\n- After')).toBe(2)
+  expect(proseWords('> Before:\n> ```text\n> log line\n> ```\nAfter')).toBe(2)
+  expect(proseWords('```npm test``` fails\nmore words')).toBe(5)
+  expect(proseWords('## Step\n| Step | PR |\n| --- | --- |\n| 1 | #3 (open) |\n- a')).toBe(7)
+})
+
+test('the gate blocks a PR body over the word cap', async ($, on) => {
+  on('tool.call', { tool: 'Bash' }, () => ({ result: 'ran' }) as never)
+  const prose = (n: number) => Array(n).fill('word').join(' ')
+
+  const long = await $.tool.call({ tool: 'Bash', command: `gh pr create --body "${BODY}\n${prose(MAX_WORDS)}"` })
+  expect(long.deny).toContain(`words outside code blocks (max ${MAX_WORDS})`)
+  expect(long.deny).toContain('puredori:pr-write')
+
+  const log = `\`\`\`\n${prose(2 * MAX_WORDS)}\n\`\`\``
+  const good = await $.tool.call({ tool: 'Bash', command: `gh pr create --body "${BODY}\n${log}"` })
+  expect(good.deny).toBeUndefined()
+
+  const quoted = log.replace(/^/gm, '> ')
+  const quotedLog = await $.tool.call({ tool: 'Bash', command: `gh pr create --body "${BODY}\n${quoted}"` })
+  expect(quotedLog.deny).toBeUndefined()
 })
 
 test('the gate blocks a PR body without the required sections', async ($, on) => {
